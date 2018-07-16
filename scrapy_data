@@ -1,0 +1,310 @@
+import urllib.request
+from bs4 import BeautifulSoup
+from urllib.error import URLError
+import re
+import urllib.parse
+import http.cookiejar
+
+
+#发起请求
+def downloader(url):
+
+    if url is None:
+
+        return None
+
+    try:
+
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent',\
+                       'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')
+        response = urllib.request.urlopen(req)
+    except URLError as e:
+
+        if hasattr(e,'code'):
+
+            print(e.code)
+        if hasattr(e,'reason'):
+
+            print(e.reason)
+
+    return response.read()
+
+
+#得到每个分类下前五十本图书
+def getClassifyBookUrls(info):
+
+    info = urllib.request.quote(info)
+    allUrl = []
+
+    for i in range(0,60,20):
+
+        url = 'https://book.douban.com/tag/%s?start=%d&type=T'%(info,i)
+        wb_data = downloader(url)
+        soup = BeautifulSoup(wb_data,'lxml')
+        links = soup.select('#subject_list > ul > li > div.info > h2 > a')
+
+        for link in links:
+
+            if 'href' in link.attrs:
+
+                allUrl.append(link.attrs['href'])
+
+    return allUrl[:50]
+
+
+#得到每个分类下前10本图书
+def getClassifyBookUrls_1(info):
+
+    info = urllib.request.quote(info)
+    allUrl = []
+
+    for i in range(0,20,20):
+
+        url = 'https://book.douban.com/tag/%s?start=%d&type=T'%(info,i)
+        wb_data = downloader(url)
+        soup = BeautifulSoup(wb_data,'lxml')
+        links = soup.select('#subject_list > ul > li > div.info > h2 > a')
+
+        for link in links:
+
+            if 'href' in link.attrs:
+
+                allUrl.append(link.attrs['href'])
+
+    return allUrl[:10]
+
+
+#得到新书速递和最受关注图书信息
+def getNewBookDatas(url):
+
+    res_data = {}
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data, 'lxml')
+    res_data['书名'] = soup.select('#wrapper > h1 > span')[0].string
+
+    try:
+        author = soup.select('#info > a')[0].string.replace(' ','').replace('\n','')
+    except IndexError as e:
+        res_data['作者'] = '小川'
+    else:
+        res_data['作者'] = author
+
+    ping = soup.select('#interest_sectl > div > div.rating_self.clearfix > strong')[0].string.replace(' ','')
+
+    if len(ping) == 0:
+
+        res_data['评分'] = '暂无评分'
+
+    else:
+
+        res_data['评分'] = ping
+
+    res_data['网址'] = url
+    info = soup.find('div', id='info')
+
+    try:
+        res_data['定价'] = info.find(text='定价:').next_element.replace(' ', '')
+        res_data['出版社'] = info.find(text='出版社:').next_element.replace(' ', '')
+        res_data['出版日期'] = info.find(text='出版年:').next_element.replace(' ', '')
+    except:
+        return None
+
+    return res_data
+
+
+#得到一般图书的信息
+def getDatas(url):
+
+    res_data = {}
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data,'lxml')
+    res_data['书名'] = soup.select('#wrapper > h1 > span')[0].string
+    res_data['作者'] = soup.select('#info > a')[0].string.replace(' ','').replace('\n','')
+    res_data['评分'] = soup.select('#interest_sectl > div > div.rating_self.clearfix > strong')[0].string.replace(' ','')
+    res_data['网址'] = url
+    info = soup.find('div',id='info')
+
+    try:
+        res_data['定价'] = info.find(text = '定价:').next_element.replace(' ','')
+        res_data['出版社'] = info.find(text = '出版社:').next_element.replace(' ','')
+        res_data['出版日期'] = info.find(text = '出版年:').next_element.replace(' ','')
+    except:
+        return None
+
+    return res_data
+
+
+#得到图书标签
+def getLabels(urls):
+
+    allClassiLabel = []
+
+    for url in urls:
+
+        label = []
+        wb_data = downloader(url)
+        soup = BeautifulSoup(wb_data,'lxml')
+        labels = soup.select('#db-tags-section > div > span > a')
+
+        for data in labels:
+
+            label.append(data.string)
+
+        label.append(url)
+        allClassiLabel.append(label)
+
+    return allClassiLabel
+
+
+#将书的信息存入列表
+def getBookDataList(urls):
+
+    recommendBookDatas = []
+
+    for url in urls:
+
+        data = getDatas(url)
+        recommendBookDatas.append(data)
+
+    return recommendBookDatas
+
+
+#将新书速递的书的信息存入列表
+def getNewBookDataList(urls):
+
+    newBooks = []
+
+    for url in urls:
+
+        data = getNewBookDatas(url)
+        newBooks.append(data)
+
+    return newBooks
+
+
+#输出推荐图书的信息
+def outputBookDatas(datas,label):
+
+    fout = open(r'C:\Users\Qhy\Desktop\网页文件\%s.html'%(label), 'w')
+    fout.write('<html>')
+    fout.write('<title>RecommendBooks</title>')
+    fout.write('<body>')
+
+    for data in datas:
+
+        fout.write("<h2><a href='%s' target=_blank>%s</a></h2>" % (data['网址'], data['书名']))
+        fout.write('<table border="1">')
+        fout.write('<tr><td>评分：</td><td><b>%s</b></td></tr>' % data['评分'])
+        fout.write('<tr><td>作者：</td><td>%s</td></tr>' % data['作者'])
+        fout.write('<tr><td>定价：</td><td>%s</td></tr>' % data['定价'])
+        fout.write('<tr><td>出版社：</td><td>%s</td></tr>' % data['出版社'])
+        fout.write('<tr><td>出版时间：</td><td>%s</td></tr>' % data['出版日期'])
+        fout.write('</table>')
+        fout.write('</p><hr>')  # 加上分割线
+
+    fout.write('</body>')
+    fout.write('</html>')
+
+
+def newbook_fictionBookUrls():
+
+    newBookUrls = []
+    url = 'https://book.douban.com/latest?icn=index-latestbook-all'
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data,'lxml')
+    books = soup.find('div',class_= 'article')
+    links = books.find_all('a', href=re.compile('https://book.douban.com/subject/\d+/$'))
+
+    for link in links:
+
+        if 'href' in link.attrs:
+
+            if link.attrs['href'] not in newBookUrls:
+
+                newBookUrls.append(link.attrs['href'])
+
+    data = getNewBookDataList(newBookUrls)
+    outputBookDatas(data,'new_fictionbook')
+
+def newbook_noFictionBookUrls():
+
+    newBookUrls = []
+    url = 'https://book.douban.com/latest?icn=index-latestbook-all'
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data, 'lxml')
+    books = soup.find('div', class_='aside')
+    links = books.find_all('a', href=re.compile('https://book.douban.com/subject/\d+/$'))
+
+    for link in links:
+
+        if 'href' in link.attrs:
+
+            if link.attrs['href'] not in newBookUrls:
+
+                newBookUrls.append(link.attrs['href'])
+
+    data = getNewBookDataList(newBookUrls)
+    outputBookDatas(data, 'new_nofictionbook')
+
+def concerned_fictionBookUrls():
+
+    newBookUrls = []
+    url = 'https://book.douban.com/chart?subcat=F&icn=index-topchart-fiction'
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data,'lxml')
+    links = soup.select('#content > div > div.article > ul > li > div.media__body > h2 > a')
+
+    for link in links:
+
+        if 'href' in link.attrs:
+
+            if link.attrs['href'] not in newBookUrls:
+
+                newBookUrls.append(link.attrs['href'])
+
+    data = getNewBookDataList(newBookUrls)
+    outputBookDatas(data,'concerned_fictionbook')
+
+
+def concerned_noFictionBookUrls():
+
+    newBookUrls = []
+    url = 'https://book.douban.com/chart?subcat=I'
+    wb_data = downloader(url)
+    soup = BeautifulSoup(wb_data,'lxml')
+    links = soup.select('#content > div > div.article > ul > li > div.media__body > h2 > a')
+
+    for link in links:
+
+        if 'href' in link.attrs:
+
+            if link.attrs['href'] not in newBookUrls:
+
+                newBookUrls.append(link.attrs['href'])
+
+    data = getNewBookDataList(newBookUrls)
+    outputBookDatas(data,'concerned_nofictionbook')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

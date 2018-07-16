@@ -1,0 +1,7 @@
+from selenium import webdriver
+
+def getUrl(url):
+
+    drive = webdriver.Chrome(executable_path=r"C:\Users\Qhy\AppData\Local\Programs\Python\chromedriver.exe")
+    drive.maximize_window()
+    drive.get(url)

@@ -1,0 +1,22 @@
+from scrapyDatas import *
+
+
+def getSampleData(label):
+
+    filename = open(r'C:\Users\Qhy\Desktop\数据文件\1.txt', 'a', encoding='utf8')
+    #得到某一类别下前五十本图书
+    urls = getClassifyBookUrls(label)
+    #得到标签和网址
+    labels = getLabels(urls)
+
+    for la in labels:
+
+        for i in range(len(la)):
+
+            filename.write(la[i] + '\t')
+
+        filename.write('\n')
+
+
+
+

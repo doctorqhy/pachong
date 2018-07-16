@@ -1,0 +1,492 @@
+from tkinter import *
+from PIL import ImageTk,Image
+from tkinter.scrolledtext import ScrolledText
+from scrapyDatas import *
+from openWeb import *
+from tkinter.messagebox import showwarning
+from threading import Thread
+from kNearestNeighbors import *
+
+
+#有返回值的多线程
+class ThreadWithReturnValue(Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+        Thread.__init__(self, group, target, name, args, kwargs, daemon=daemon)
+
+        self._return = None
+
+    def run(self):
+
+        if self._target is not None:
+
+            self._return = self._target(*self._args, **self._kwargs)
+
+    def join(self):
+
+        Thread.join(self)
+        return self._return
+
+
+#调整照片大小
+def resize(w, h, w_box, h_box, pil_image):
+
+    f1 = 1.0 * w_box / w
+    f2 = 1.0 * h_box / h
+    factor = min([f1, f2])
+    width = int(w * factor)
+    height = int(h * factor)
+
+    return pil_image.resize((width, height), Image.ANTIALIAS)
+
+
+#主界面
+def firstInterface():
+
+    top = Tk()
+    top.geometry('800x500')
+    top.title('个性化阅读推荐系统---周梦娜')
+    #top.state('zoomed')
+
+    menubar = Menu(top)
+    new_bookMenu = Menu(menubar,tearoff = 0)
+    new_bookMenu.add_command(label = '虚构类',command = new_fictionBooks)
+    new_bookMenu.add_separator()
+    new_bookMenu.add_command(label = '非虚构类',command = new_nofictionBooks)
+    mostConcerned_bookMenu = Menu(menubar,tearoff = 0)
+    mostConcerned_bookMenu.add_command(label = '虚构类',command = concerned_fictionBooks)
+    mostConcerned_bookMenu.add_separator()
+    mostConcerned_bookMenu.add_command(label = '非虚构类',command = concerned_noFictionBooks)
+    menubar.add_cascade(label = '新书推荐',menu = new_bookMenu)
+    menubar.add_cascade(label = '最受关注图书推荐',menu = mostConcerned_bookMenu)
+    menubar.add_cascade(label = '分类推荐',command = classiRecommand)
+    top.config(menu = menubar)
+
+    w_box = 830
+    h_box = 500
+    image = Image.open(r'C:\Users\Qhy\Desktop\2.jpg')
+    w, h = image.size
+    pil_image_resize = resize(w, h, w_box, h_box, image)
+    photo = ImageTk.PhotoImage(pil_image_resize)
+
+    label = Label(top,image = photo)
+    label.pack()
+
+    top.mainloop()
+
+
+#分类推荐界面
+class classiRecommand(object):
+
+    def __init__(self):
+
+        self.warn = lambda message: showwarning(message, '确定')
+        self.top = Toplevel()
+        self.top.title('分类推荐')
+        self.top.state('zoomed')
+        self.frame_top = Frame(self.top)
+        self.label = Label(self.frame_top,text = '输入类别')
+        self.label.pack(side = LEFT)
+        self.text = Text(self.frame_top,width = 20,height = 1,font = ('Arial',15))
+        self.text.pack(side = LEFT)
+        self.button = Button(self.frame_top,text = '查找',command = self.find)
+        self.button.pack(side = LEFT)
+        self.frame_top.pack(side = TOP)
+
+        self.frame_middle = Frame(self.top)
+        self.frame_1 = Frame(self.frame_middle)
+        self.text_1 = ScrolledText(self.frame_1,width=20, height=15,font = ('Arial',15))
+        self.text_1.pack(side = TOP)
+        self.button_1 = Button(self.frame_1,text = '查看推荐',command = self.recommand_1)
+        self.button_1.pack(side = TOP)
+        self.frame_1.pack(side = LEFT)
+
+        self.frame_2 = Frame(self.frame_middle)
+        self.text_2 = ScrolledText(self.frame_2, width=20, height=15,font = ('Arial',15))
+        self.text_2.pack(side=TOP)
+        self.button_2 = Button(self.frame_2, text='查看推荐',command = self.recommand_2)
+        self.button_2.pack(side=TOP)
+        self.frame_2.pack(side=LEFT)
+
+        self.frame_3 = Frame(self.frame_middle)
+        self.text_3 = ScrolledText(self.frame_3, width=20, height=15,font = ('Arial',15))
+        self.text_3.pack(side=TOP)
+        self.button_3 = Button(self.frame_3, text='查看推荐',command = self.recommand_3)
+        self.button_3.pack(side=TOP)
+        self.frame_3.pack(side=LEFT)
+
+        self.frame_4 = Frame(self.frame_middle)
+        self.text_4 = ScrolledText(self.frame_4, width=20, height=15,font = ('Arial',15))
+        self.text_4.pack(side=TOP)
+        self.button_4 = Button(self.frame_4, text='查看推荐',command = self.recommand_4)
+        self.button_4.pack(side=TOP)
+        self.frame_4.pack(side=LEFT)
+
+        self.frame_5 = Frame(self.frame_middle)
+        self.text_5 = ScrolledText(self.frame_5, width=20, height=15,font = ('Arial',15))
+        self.text_5.pack(side=TOP)
+        self.button_5 = Button(self.frame_5, text='查看推荐',command = self.recommand_5)
+        self.button_5.pack(side=TOP)
+        self.frame_5.pack(side=LEFT)
+
+        self.frame_middle.pack(side = TOP)
+
+        self.frame_bottom = Frame(self.top)
+
+        self.frame_6 = Frame(self.frame_bottom)
+        self.text_6 = ScrolledText(self.frame_6, width=20, height=15,font = ('Arial',15))
+        self.text_6.pack(side=TOP)
+        self.button_6 = Button(self.frame_6, text='查看推荐',command = self.recommand_6)
+        self.button_6.pack(side=TOP)
+        self.frame_6.pack(side=LEFT)
+
+        self.frame_7 = Frame(self.frame_bottom)
+        self.text_7 = ScrolledText(self.frame_7, width=20, height=15,font = ('Arial',15))
+        self.text_7.pack(side=TOP)
+        self.button_7 = Button(self.frame_7, text='查看推荐',command = self.recommand_7)
+        self.button_7.pack(side=TOP)
+        self.frame_7.pack(side=LEFT)
+
+        self.frame_8 = Frame(self.frame_bottom)
+        self.text_8 = ScrolledText(self.frame_8, width=20, height=15,font = ('Arial',15))
+        self.text_8.pack(side=TOP)
+        self.button_8 = Button(self.frame_8, text='查看推荐',command = self.recommand_8)
+        self.button_8.pack(side=TOP)
+        self.frame_8.pack(side=LEFT)
+
+        self.frame_9 = Frame(self.frame_bottom)
+        self.text_9 = ScrolledText(self.frame_9, width=20, height=15,font = ('Arial',15))
+        self.text_9.pack(side=TOP)
+        self.button_9 = Button(self.frame_9, text='查看推荐',command = self.recommand_9)
+        self.button_9.pack(side=TOP)
+        self.frame_9.pack(side=LEFT)
+
+        self.frame_10 = Frame(self.frame_bottom)
+        self.text_10 = ScrolledText(self.frame_10, width=20, height=15,font = ('Arial',15))
+        self.text_10.pack(side=TOP)
+        self.button_10 = Button(self.frame_10, text='查看推荐',command = self.recommand_10)
+        self.button_10.pack(side=TOP)
+        self.frame_10.pack(side=LEFT)
+
+        self.frame_bottom.pack(side = TOP)
+
+    def find(self):
+
+        try:
+            self.data = self.text.get('0.0',END).replace('\n','')
+            self.text.delete('0.0', END)
+            self.urls = getClassifyBookUrls_1(self.data)
+            self.thread1 = ThreadWithReturnValue(target = getLabels,args = (self.urls,))
+            self.thread2 = ThreadWithReturnValue(target = getBookDataList,args = (self.urls,))
+            self.thread1.start()
+            self.thread2.start()
+            self.labels = self.thread1.join()
+            self.datas = self.thread2.join()
+
+            self.text_1.delete('0.0',END)
+            self.text_1.insert(END,'书名:' + self.datas[0]['书名']+'\n')
+            self.text_1.insert(END,'作者:' + self.datas[0]['作者']+'\n')
+            self.text_1.insert(END,'评分:' + self.datas[0]['评分']+'\n')
+            self.text_1.insert(END,'定价:' + self.datas[0]['定价']+'\n')
+            self.text_1.insert(END,'出版社:' + self.datas[0]['出版社']+'\n')
+            self.text_1.insert(END,'出版日期:' + self.datas[0]['出版日期']+'\n')
+
+            self.text_2.delete('0.0', END)
+            self.text_2.insert(END, '书名:' + self.datas[1]['书名'] + '\n')
+            self.text_2.insert(END, '作者:' + self.datas[1]['作者'] + '\n')
+            self.text_2.insert(END, '评分:' + self.datas[1]['评分'] + '\n')
+            self.text_2.insert(END, '定价:' + self.datas[1]['定价'] + '\n')
+            self.text_2.insert(END, '出版社:' + self.datas[1]['出版社'] + '\n')
+            self.text_2.insert(END, '出版日期:' + self.datas[1]['出版日期'] + '\n')
+            self.text_3.delete('0.0', END)
+            self.text_3.insert(END, '书名:' + self.datas[2]['书名'] + '\n')
+            self.text_3.insert(END, '作者:' + self.datas[2]['作者'] + '\n')
+
+            self.text_3.insert(END, '评分:' + self.datas[2]['评分'] + '\n')
+            self.text_3.insert(END, '定价:' + self.datas[2]['定价'] + '\n')
+            self.text_3.insert(END, '出版社:' + self.datas[2]['出版社'] + '\n')
+            self.text_3.insert(END, '出版日期:' + self.datas[2]['出版日期'] + '\n')
+
+            self.text_4.delete('0.0', END)
+            self.text_4.insert(END, '书名:' + self.datas[3]['书名'] + '\n')
+            self.text_4.insert(END, '作者:' + self.datas[3]['作者'] + '\n')
+            self.text_4.insert(END, '评分:' + self.datas[3]['评分'] + '\n')
+            self.text_4.insert(END, '定价:' + self.datas[3]['定价'] + '\n')
+            self.text_4.insert(END, '出版社:' + self.datas[3]['出版社'] + '\n')
+            self.text_4.insert(END, '出版日期:' + self.datas[3]['出版日期'] + '\n')
+
+            self.text_5.delete('0.0', END)
+            self.text_5.insert(END, '书名:' + self.datas[4]['书名'] + '\n')
+            self.text_5.insert(END, '作者:' + self.datas[4]['作者'] + '\n')
+            self.text_5.insert(END, '评分:' + self.datas[4]['评分'] + '\n')
+            self.text_5.insert(END, '定价:' + self.datas[4]['定价'] + '\n')
+            self.text_5.insert(END, '出版社:' + self.datas[4]['出版社'] + '\n')
+            self.text_5.insert(END, '出版日期:' + self.datas[4]['出版日期'] + '\n')
+
+            self.text_6.delete('0.0', END)
+            self.text_6.insert(END, '书名:' + self.datas[5]['书名'] + '\n')
+            self.text_6.insert(END, '作者:' + self.datas[5]['作者'] + '\n')
+            self.text_6.insert(END, '评分:' + self.datas[5]['评分'] + '\n')
+            self.text_6.insert(END, '定价:' + self.datas[5]['定价'] + '\n')
+            self.text_6.insert(END, '出版社:' + self.datas[5]['出版社'] + '\n')
+            self.text_6.insert(END, '出版日期:' + self.datas[5]['出版日期'] + '\n')
+
+            self.text_7.delete('0.0', END)
+            self.text_7.insert(END, '书名:' + self.datas[6]['书名'] + '\n')
+            self.text_7.insert(END, '作者:' + self.datas[6]['作者'] + '\n')
+            self.text_7.insert(END, '评分:' + self.datas[6]['评分'] + '\n')
+            self.text_7.insert(END, '定价:' + self.datas[6]['定价'] + '\n')
+            self.text_7.insert(END, '出版社:'+self.datas[6]['出版社'] + '\n')
+            self.text_7.insert(END, '出版日期:'+self.datas[6]['出版日期'] + '\n')
+
+            self.text_8.delete('0.0', END)
+            self.text_8.insert(END, '书名:' + self.datas[7]['书名'] + '\n')
+            self.text_8.insert(END, '作者:' + self.datas[7]['作者'] + '\n')
+            self.text_8.insert(END, '评分:' + self.datas[7]['评分'] + '\n')
+            self.text_8.insert(END, '定价:' + self.datas[7]['定价'] + '\n')
+            self.text_8.insert(END, '出版社:' + self.datas[7]['出版社'] + '\n')
+            self.text_8.insert(END, '出版日期:' + self.datas[7]['出版日期'] + '\n')
+
+            self.text_9.delete('0.0', END)
+            self.text_9.insert(END, '书名:' + self.datas[8]['书名'] + '\n')
+            self.text_9.insert(END, '作者:' + self.datas[8]['作者'] + '\n')
+            self.text_9.insert(END, '评分:' + self.datas[8]['评分'] + '\n')
+            self.text_9.insert(END, '定价:' + self.datas[8]['定价'] + '\n')
+            self.text_9.insert(END, '出版社:' + self.datas[8]['出版社'] + '\n')
+            self.text_9.insert(END, '出版日期:' + self.datas[8]['出版日期'] + '\n')
+
+            self.text_10.delete('0.0', END)
+            self.text_10.insert(END, '书名:' + self.datas[9]['书名'] + '\n')
+            self.text_10.insert(END, '作者:' + self.datas[9]['作者'] + '\n')
+            self.text_10.insert(END, '评分:' + self.datas[9]['评分'] + '\n')
+            self.text_10.insert(END, '定价:' + self.datas[9]['定价'] + '\n')
+            self.text_10.insert(END, '出版社:' + self.datas[9]['出版社'] + '\n')
+            self.text_10.insert(END, '出版日期:' + self.datas[9]['出版日期'] + '\n')
+
+        except IndexError as e:
+
+            self.warning()
+
+    def warning(self):
+
+        self.warn('请重新登录')
+
+    def recommand_1(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList,self.labels[0])
+        urls = kNN(mytest,mydata,mylabels,10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas,1)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/1.html')
+
+    def recommand_2(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[1])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 2)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/2.html')
+
+    def recommand_3(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[2])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas,3)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/3.html')
+
+    def recommand_4(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[3])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas,4)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/4.html')
+
+    def recommand_5(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[4])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 5)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/5.html')
+
+    def recommand_6(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[5])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 6)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/6.html')
+
+    def recommand_7(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[6])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 7)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/7.html')
+
+    def recommand_8(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[7])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 8)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/8.html')
+
+    def recommand_9(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[8])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 9)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/9.html')
+
+    def recommand_10(self):
+
+        dataset, mylabels = loadDataSet()
+        # 得到所有出现的标签
+        myVocabList = createVocabList(dataset)
+        # 将每一个标签转化为向量
+        mydata = []
+
+        for data in dataset:
+
+            mydata.append(setOfWordVac(myVocabList, data))
+
+        mytest = setOfWordVac(myVocabList, self.labels[9])
+        urls = kNN(mytest, mydata, mylabels, 10)
+        bookDatas = getBookDataList(urls)
+        outputBookDatas(bookDatas, 10)
+
+        getUrl(r'file:///C:/Users/Qhy/Desktop/网页文件/10.html')
+
+
+#新书推荐虚构类小说显示
+def new_fictionBooks():
+
+    newbook_fictionBookUrls()
+    getUrl('file:///C:/Users/Qhy/Desktop/网页文件/new_fictionbook.html')
+
+
+#新书推荐非虚构类小说显示
+def new_nofictionBooks():
+
+    newbook_noFictionBookUrls()
+    getUrl('file:///C:/Users/Qhy/Desktop/网页文件/new_nofictionbook.html')
+
+
+#受关注图书虚构类小说显示
+def concerned_fictionBooks():
+
+    concerned_fictionBookUrls()
+    getUrl('file:///C:/Users/Qhy/Desktop/网页文件/concerned_fictionbook.html')
+
+
+#受关注图书非虚构类小说显示
+def concerned_noFictionBooks():
+
+    concerned_fictionBookUrls()
+    getUrl('file:///C:/Users/Qhy/Desktop/网页文件/concerned_nofictionbook.html')
+
+
+firstInterface()

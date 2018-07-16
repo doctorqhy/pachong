@@ -1,0 +1,68 @@
+from numpy import *
+
+
+def loadDataSet():
+
+    myData = []
+    labels = []
+    fr = open(r'C:\Users\Qhy\Desktop\数据文件\1.txt','r',encoding='utf8')
+
+    for line in fr.readlines():
+
+        curLines = []
+        curLine = line.strip().split('\t')
+
+        for i in range(len(curLine) - 1):
+
+            curLines.append(curLine[i])
+
+        myData.append(curLines)
+        labels.append(curLine[-1])
+
+    return myData,labels
+
+
+def createVocabList(dataset):
+
+    vocabSet = set([])
+
+    for data in dataset:
+
+        vocabSet = vocabSet | set(data)
+
+    return list(vocabSet)
+
+
+def setOfWordVac(dataset,input):
+
+    returnVec = [0] * len(dataset)
+
+
+    for word in input:
+
+        if word in dataset:
+
+            returnVec[dataset.index(word)] = 1
+
+    return list(returnVec)
+
+
+def kNN(input,dataset,label,k):
+
+    m = shape(dataset)[0]
+    diffMat = tile(input,(m,1)) - dataset
+    sqDiffMat = diffMat ** 2
+    sqDistances = sqDiffMat.sum(axis=1)
+    distance = sqDistances ** 0.5
+    sorteDistIndicies = distance.argsort()
+    urls = []
+
+    for i in range(k):
+
+        url = label[sorteDistIndicies[i]]
+        urls.append(url)
+
+    return urls
+
+
+
